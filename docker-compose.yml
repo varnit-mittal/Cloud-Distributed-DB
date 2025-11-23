@@ -1,0 +1,82 @@
+version: "3.8"
+services:
+  etcd:
+    image: bitnamilegacy/etcd:latest
+    environment:
+      - ALLOW_NONE_AUTHENTICATION=yes
+      - ETCD_ADVERTISE_CLIENT_URLS=http://0.0.0.0:2379
+      - ETCD_LISTEN_CLIENT_URLS=http://0.0.0.0:2379
+    ports:
+      - "2379:2379"
+  redis:
+    image: redis:6-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "6379:6379"
+  controller:
+    build:
+      context: ./controller
+      dockerfile: Dockerfile
+    environment:
+      - ETCD_HOST=etcd
+      - ETCD_PORT=2379
+    depends_on:
+      - etcd
+    ports:
+      - "8000:8000"
+  worker1:
+    build:
+      context: ./worker
+      dockerfile: Dockerfile
+    environment:
+      - NODE_ID=worker1
+      - CONTROLLER_ADDR=http://controller:8000
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      - controller
+      - redis
+    ports:
+      - "8101:8001"
+      - "51051:50051"
+  worker2:
+    build:
+      context: ./worker
+      dockerfile: Dockerfile
+    environment:
+      - NODE_ID=worker2
+      - CONTROLLER_ADDR=http://controller:8000
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      - controller
+      - redis
+    ports:
+      - "8102:8001"
+      - "52051:50051"
+  worker3:
+    build:
+      context: ./worker
+      dockerfile: Dockerfile
+    environment:
+      - NODE_ID=worker3
+      - CONTROLLER_ADDR=http://controller:8000
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      - controller
+      - redis
+    ports:
+      - "8103:8001"
+      - "53051:50051"
+  worker4:
+    build:
+      context: ./worker
+      dockerfile: Dockerfile
+    environment:
+      - NODE_ID=worker4
+      - CONTROLLER_ADDR=http://controller:8000
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      - controller
+      - redis
+    ports:
+      - "8104:8001"
+      - "54051:50051"

@@ -1,0 +1,43 @@
+syntax = "proto3";
+
+package kv;
+
+message KeyValue {
+  string key = 1;
+  string value = 2;
+  uint64 version = 3;
+}
+
+message ReplicateRequest {
+  KeyValue kv = 1;
+  string from_node = 2;
+}
+
+message ReplicateResponse {
+  bool ok = 1;
+  string message = 2;
+}
+
+message MerkleRootRequest {
+  string partition = 1;
+}
+
+message MerkleRootResponse {
+  string root = 1;
+}
+
+message RangeRequest {
+  string partition = 1;
+  uint32 start_bucket = 2;
+  uint32 end_bucket = 3;
+}
+
+message RangeResponse {
+  repeated KeyValue kvs = 1;
+}
+
+service Replicator {
+  rpc Replicate(ReplicateRequest) returns (ReplicateResponse);
+  rpc GetMerkleRoot(MerkleRootRequest) returns (MerkleRootResponse);
+  rpc TransferRange(RangeRequest) returns (RangeResponse);
+}

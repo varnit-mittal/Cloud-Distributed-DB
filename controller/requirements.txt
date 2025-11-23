@@ -1,0 +1,7 @@
+fastapi
+uvicorn[standard]
+etcd3
+httpx
+grpcio
+grpcio-tools
+pydantic

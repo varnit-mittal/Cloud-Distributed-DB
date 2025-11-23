@@ -1,0 +1,10 @@
+fastapi
+uvicorn[standard]
+grpcio
+grpcio-tools
+aioredis
+httpx
+prometheus-client
+protobuf
+opentelemetry-api
+opentelemetry-sdk

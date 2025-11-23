@@ -1,0 +1,13 @@
+fastapi
+uvicorn[standard]
+grpcio
+grpcio-tools
+aioredis
+httpx
+etcd3
+pydantic
+kopf
+kubernetes
+prometheus-client
+opentelemetry-api
+opentelemetry-sdk
