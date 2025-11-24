@@ -1,33 +1,64 @@
-import redis.asyncio as aioredis
-import json
-from typing import Optional
+# worker/storage.py
+import motor.motor_asyncio
+from typing import Optional, Dict, Any, List
+from pymongo import ReturnDocument
 
-class RedisStorage:
-    def __init__(self, url="redis://localhost:6379/0"):
-        self.url = url
-        self.client = aioredis.from_url(self.url, decode_responses=True)
+class MongoStorage:
+    def __init__(self, mongo_uri="mongodb://mongo:27017", db_name="kvstore", coll_name="kv"):
+        self.client = motor.motor_asyncio.AsyncIOMotorClient(mongo_uri)
+        self.db = self.client[db_name]
+        self.coll = self.db[coll_name]
+        # ensure index on key
+        # Note: create_index is async but safe to call multiple times
+        try:
+            # schedule index creation, non-blocking
+            self.coll.create_index("key", unique=True)
+        except Exception:
+            pass
 
-    async def put(self, key: str, value: str, version: int = None):
-        # store value and version in a JSON blob
-        if version is None:
-            version = 1
-        data = {"value": value, "version": version}
-        await self.client.set(key, json.dumps(data))
-        return True
+    async def put(self, key: str, value: str, version: int = 1) -> bool:
+        """
+        Write the key only if incoming version >= existing version.
+        Returns True if write applied, False if ignored due to older version.
+        """
+        # Try atomic conditional update: if existing.version <= version OR no existing doc
+        filter_doc = {
+            "key": key,
+            "$or": [
+                {"version": {"$lte": version}},
+                {"version": {"$exists": False}}
+            ]
+        }
+        update_doc = {"$set": {"value": value, "version": version}}
+        res = await self.coll.find_one_and_update(
+            filter_doc,
+            update_doc,
+            upsert=True,
+            return_document=ReturnDocument.AFTER
+        )
+        # If res is not None then operation succeeded (either update or upsert).
+        return res is not None
 
-    async def get(self, key: str):
-        v = await self.client.get(key)
-        if not v:
+    async def get(self, key: str) -> Optional[Dict[str, Any]]:
+        doc = await self.coll.find_one({"key": key})
+        if not doc:
             return None
-        return json.loads(v)
+        return {"value": doc.get("value"), "version": int(doc.get("version", 1))}
 
-    async def keys(self, pattern="*"):
-        return await self.client.keys(pattern)
+    async def keys(self, pattern: str = "") -> List[str]:
+        # pattern ignored for now (simple MVP)
+        cursor = self.coll.find({}, {"_id": 0, "key": 1})
+        keys = []
+        async for doc in cursor:
+            keys.append(doc["key"])
+        return keys
 
-    async def get_many(self, keys):
-        vals = await self.client.mget(keys)
-        import json
+    async def get_many(self, keys: list) -> Dict[str, Optional[Dict[str, Any]]]:
+        docs = self.coll.find({"key": {"$in": keys}})
         out = {}
-        for k, v in zip(keys, vals):
-            out[k] = json.loads(v) if v else None
+        async for d in docs:
+            out[d["key"]] = {"value": d.get("value"), "version": int(d.get("version", 1))}
+        # include missing keys as None
+        for k in keys:
+            out.setdefault(k, None)
         return out

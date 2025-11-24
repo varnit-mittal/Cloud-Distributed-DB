@@ -1,11 +1,14 @@
 fastapi
 uvicorn[standard]
-redis
-grpcio
-grpcio-tools
-aioredis
 httpx
+motor            # async MongoDB driver
+pymongo
+redis            # redis client (sync) — used if needed
+aioredis    # async redis client (streams publisher/consumer)
+pydantic
 prometheus-client
-protobuf
 opentelemetry-api
 opentelemetry-sdk
+protobuf==3.20.3
+grpcio
+grpcio-tools

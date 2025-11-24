@@ -1,37 +1,33 @@
+# worker/grpc_server.py
 import asyncio
 import grpc
 import kv_pb2
 import kv_pb2_grpc
-from storage import RedisStorage
-from merkle import compute_merkle_root as compute_root
+from storage import MongoStorage
+from merkle import compute_merkle_root  # ensure merkle supports storage interface / or adjust
 import json
 
 class ReplicatorServicer(kv_pb2_grpc.ReplicatorServicer):
-    def __init__(self, storage: RedisStorage):
+    def __init__(self, storage: MongoStorage):
         self.storage = storage
 
     async def Replicate(self, request, context):
         kv = request.kv
-        # idempotent write: accept version if greater or equal (simple)
-        existing = await self.storage.get(kv.key)
         incoming_version = kv.version or 1
-        if existing and existing.get("version", 0) > incoming_version:
-            # older write, ignore
+        # write to MongoStorage
+        applied = await self.storage.put(kv.key, kv.value, incoming_version)
+        if applied:
+            return kv_pb2.ReplicateResponse(ok=True, message="replicated")
+        else:
             return kv_pb2.ReplicateResponse(ok=True, message="ignored older version")
-        await self.storage.put(kv.key, kv.value, incoming_version)
-        return kv_pb2.ReplicateResponse(ok=True, message="replicated")
 
     async def GetMerkleRoot(self, request, context):
-        root = await compute_root(request.partition)
+        # compute_merkle_root should accept a storage-like object with keys()/get()
+        root = await compute_merkle_root(self.storage, bucket_count=16)
         return kv_pb2.MerkleRootResponse(root=root)
 
     async def TransferRange(self, request, context):
-        # get keys in bucket range and stream them (for simplicity we return all)
-        # NOTE: this RPC returns all items in the range in a single message (not streaming) to keep MVP simple.
-        # In production you'd implement streaming RPC.
-        start = request.start_bucket
-        end = request.end_bucket
-        # naive fetch: return all keys (filtering by buckets omitted for brevity)
+        # Simple MVP: return all items (or implement filtering by buckets)
         keys = await self.storage.keys()
         kvs = []
         for k in keys:
