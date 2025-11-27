@@ -36,3 +36,4 @@ spec:
     app: etcd
   ports:
   - port: 2379
+    targetPort: 2379

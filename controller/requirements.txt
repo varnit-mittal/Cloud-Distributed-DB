@@ -6,3 +6,5 @@ httpx
 grpcio
 grpcio-tools
 pydantic
+redis            # redis client (sync) — used if needed
+aioredis    # async redis client (streams publisher/consumer)

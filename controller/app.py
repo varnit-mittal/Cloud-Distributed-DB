@@ -4,8 +4,13 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 import asyncio
 from controller import Controller
+import os
 
-ctrl = Controller()
+ETCD_HOST = os.environ.get("ETCD_HOST", "etcd")
+print(ETCD_HOST)
+ETCD_PORT = int(os.environ.get("ETCD_PORT", "2379"))
+
+ctrl = Controller(etcd_host=ETCD_HOST, etcd_port=ETCD_PORT)
 
 class RegisterReq(BaseModel):
     node_id: str
