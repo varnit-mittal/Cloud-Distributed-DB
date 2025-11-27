@@ -1,0 +1,45 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: worker-mongo
+  namespace: kv-system
+spec:
+  serviceName: worker-mongo
+  replicas: 4
+  selector:
+    matchLabels:
+      app: worker-mongo
+  template:
+    metadata:
+      labels:
+        app: worker-mongo
+    spec:
+      containers:
+      - name: mongo
+        image: mongo:6.0
+        ports:
+        - containerPort: 27017
+        volumeMounts:
+        - name: mongo-data
+          mountPath: /data/db
+  volumeClaimTemplates:
+  - metadata:
+      name: mongo-data
+    spec:
+      accessModes: ["ReadWriteOnce"]
+      resources:
+        requests:
+          storage: 2Gi
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: worker-mongo
+  namespace: kv-system
+spec:
+  clusterIP: None
+  selector:
+    app: worker-mongo
+  ports:
+  - port: 27017

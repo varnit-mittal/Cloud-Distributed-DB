@@ -19,15 +19,10 @@ class ReplicatorStub(object):
                 request_serializer=kv__pb2.ReplicateRequest.SerializeToString,
                 response_deserializer=kv__pb2.ReplicateResponse.FromString,
                 )
-        self.GetMerkleRoot = channel.unary_unary(
-                '/kv.Replicator/GetMerkleRoot',
-                request_serializer=kv__pb2.MerkleRootRequest.SerializeToString,
-                response_deserializer=kv__pb2.MerkleRootResponse.FromString,
-                )
-        self.TransferRange = channel.unary_unary(
-                '/kv.Replicator/TransferRange',
-                request_serializer=kv__pb2.RangeRequest.SerializeToString,
-                response_deserializer=kv__pb2.RangeResponse.FromString,
+        self.StreamBucket = channel.unary_stream(
+                '/kv.Replicator/StreamBucket',
+                request_serializer=kv__pb2.StreamBucketRequest.SerializeToString,
+                response_deserializer=kv__pb2.StreamKV.FromString,
                 )
 
 
@@ -40,14 +35,9 @@ class ReplicatorServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
-    def GetMerkleRoot(self, request, context):
-        """Missing associated documentation comment in .proto file."""
-        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-        context.set_details('Method not implemented!')
-        raise NotImplementedError('Method not implemented!')
-
-    def TransferRange(self, request, context):
-        """Missing associated documentation comment in .proto file."""
+    def StreamBucket(self, request, context):
+        """Server-side streaming for bucket transfer
+        """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
@@ -60,15 +50,10 @@ def add_ReplicatorServicer_to_server(servicer, server):
                     request_deserializer=kv__pb2.ReplicateRequest.FromString,
                     response_serializer=kv__pb2.ReplicateResponse.SerializeToString,
             ),
-            'GetMerkleRoot': grpc.unary_unary_rpc_method_handler(
-                    servicer.GetMerkleRoot,
-                    request_deserializer=kv__pb2.MerkleRootRequest.FromString,
-                    response_serializer=kv__pb2.MerkleRootResponse.SerializeToString,
-            ),
-            'TransferRange': grpc.unary_unary_rpc_method_handler(
-                    servicer.TransferRange,
-                    request_deserializer=kv__pb2.RangeRequest.FromString,
-                    response_serializer=kv__pb2.RangeResponse.SerializeToString,
+            'StreamBucket': grpc.unary_stream_rpc_method_handler(
+                    servicer.StreamBucket,
+                    request_deserializer=kv__pb2.StreamBucketRequest.FromString,
+                    response_serializer=kv__pb2.StreamKV.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -98,7 +83,7 @@ class Replicator(object):
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
     @staticmethod
-    def GetMerkleRoot(request,
+    def StreamBucket(request,
             target,
             options=(),
             channel_credentials=None,
@@ -108,25 +93,8 @@ class Replicator(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/kv.Replicator/GetMerkleRoot',
-            kv__pb2.MerkleRootRequest.SerializeToString,
-            kv__pb2.MerkleRootResponse.FromString,
-            options, channel_credentials,
-            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
-
-    @staticmethod
-    def TransferRange(request,
-            target,
-            options=(),
-            channel_credentials=None,
-            call_credentials=None,
-            insecure=False,
-            compression=None,
-            wait_for_ready=None,
-            timeout=None,
-            metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/kv.Replicator/TransferRange',
-            kv__pb2.RangeRequest.SerializeToString,
-            kv__pb2.RangeResponse.FromString,
+        return grpc.experimental.unary_stream(request, target, '/kv.Replicator/StreamBucket',
+            kv__pb2.StreamBucketRequest.SerializeToString,
+            kv__pb2.StreamKV.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)

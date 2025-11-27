@@ -1,20 +1,20 @@
+# operator/operator.py
 import kopf
-import kubernetes
-import asyncio
-import httpx
+import requests
 import os
 
-kubernetes.config.load_kube_config()  # assumes your local kubeconfig present
+CONTROLLER = os.environ.get("CONTROLLER_ADDR", "http://controller.kv-system.svc.cluster.local:8000")
 
-@kopf.on.create('kv.example.com', 'v1alpha1', 'kvclusters')
-async def create_fn(spec, name, namespace, logger, **kwargs):
-    replicas = spec.get("replicas", 4)
-    logger.info(f"KVCluster {name} created with {replicas} replicas")
-    # In full implementation: create a StatefulSet with given replicas, call Controller API to update mapping.
-    # For now just record status
-    return {"message": "created", "replicas": replicas}
-
-@kopf.on.update('kv.example.com', 'v1alpha1', 'kvclusters')
-async def update_fn(spec, status, name, namespace, logger, **kwargs):
-    logger.info("KVCluster spec updated: %s", spec)
-    # You would implement scaling/rebalance orchestration here.
+@kopf.on.create('kv.example.com', 'v1alpha1', 'keyspacerebalances')
+def on_rebalance(spec, name, namespace, logger, **kwargs):
+    node = spec.get("node")
+    action = spec.get("action", "recover")
+    logger.info(f"Rebalance CR created: {name} node={node} action={action}")
+    # call controller endpoint to start rebalancing (controller should expose /rebalance)
+    try:
+        r = requests.post(f"{CONTROLLER}/rebalance", json={"node": node, "action": action}, timeout=10)
+        logger.info("Controller response: %s", r.text)
+    except Exception as e:
+        logger.exception("Failed to request controller rebalance: %s", e)
+        raise kopf.TemporaryError("controller call failed", delay=30)
+    return {"status": "started"}

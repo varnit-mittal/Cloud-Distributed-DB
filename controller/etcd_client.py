@@ -1,31 +1,24 @@
-# simple etcd wrapper
+# controller/etcd_client.py
 import etcd3
 import json
-from typing import Dict, List
-
-import os
-ETCD_HOST = os.environ.get("ETCD_HOST", "etcd")
-ETCD_PORT = int(os.environ.get("ETCD_PORT", "2379"))
 
 class EtcdClient:
-    def __init__(self, host=ETCD_HOST, port=ETCD_PORT):
-        self.client = etcd3.client(host=ETCD_HOST, port=ETCD_PORT)
+    def __init__(self, host="127.0.0.1", port=2379):
+        self.client = etcd3.client(host=host, port=port)
 
-    def save_workers(self, workers: Dict[str, str]):
-        # workers: {node_id: address}
-        self.client.put("../workers", json.dumps(workers))
+    def save_workers(self, workers_dict):
+        # persist as json-string map for compatibility
+        # workers_dict: {node_id: {"http":..., "grpc":...}}
+        for nid, meta in workers_dict.items():
+            self.client.put(f"workers/{nid}", json.dumps(meta))
 
-    def load_workers(self) -> Dict[str, str]:
-        v, _ = self.client.get("/workers")
-        if not v:
-            return {}
-        return json.loads(v.decode())
-
-    def put(self, key: str, value: str):
-        self.client.put(key, value)
-
-    def get(self, key: str):
-        v, _ = self.client.get(key)
-        if v:
-            return v.decode()
-        return None
+    def load_workers(self):
+        out={}
+        prefix = self.client.get_prefix("workers/")
+        for value, meta in prefix:
+            key = meta.key.decode().split("/",1)[1]
+            try:
+                out[key] = json.loads(value.decode())
+            except Exception:
+                out[key] = value.decode()
+        return out

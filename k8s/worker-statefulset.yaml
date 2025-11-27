@@ -1,0 +1,56 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: worker
+  namespace: kv-system
+spec:
+  serviceName: worker
+  replicas: 4
+  selector:
+    matchLabels:
+      app: worker
+  template:
+    metadata:
+      labels:
+        app: worker
+    spec:
+      containers:
+      - name: worker
+        image: varn03/kv-worker:latest
+        env:
+        - name: NODE_ID
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name   # e.g. worker-0
+        - name: CONTROLLER_ADDR
+          value: "http://controller.kv-system.svc.cluster.local:8000"
+        - name: REDIS_URL
+          value: "redis://redis.kv-system.svc.cluster.local:6379/0"
+        - name: MONGO_URL
+          value: "mongodb://worker-mongo-$(HOSTNAME).worker-mongo.kv-system.svc.cluster.local:27017"
+        - name: GRPC_PORT
+          value: "50051"
+        - name: HTTP_PORT
+          value: "8001"
+        - name: HOSTNAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        ports:
+        - containerPort: 8001
+        - containerPort: 50051
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: worker
+  namespace: kv-system
+spec:
+  clusterIP: None
+  selector:
+    app: worker
+  ports:
+  - port: 8001
+    name: http
+  - port: 50051
+    name: grpc

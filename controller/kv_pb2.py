@@ -14,17 +14,15 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x08kv.proto\x12\x02kv\"7\n\x08KeyValue\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t\x12\x0f\n\x07version\x18\x03 \x01(\x04\"?\n\x10ReplicateRequest\x12\x18\n\x02kv\x18\x01 \x01(\x0b\x32\x0c.kv.KeyValue\x12\x11\n\tfrom_node\x18\x02 \x01(\t\"0\n\x11ReplicateResponse\x12\n\n\x02ok\x18\x01 \x01(\x08\x12\x0f\n\x07message\x18\x02 \x01(\t\"&\n\x11MerkleRootRequest\x12\x11\n\tpartition\x18\x01 \x01(\t\"\"\n\x12MerkleRootResponse\x12\x0c\n\x04root\x18\x01 \x01(\t\"K\n\x0cRangeRequest\x12\x11\n\tpartition\x18\x01 \x01(\t\x12\x14\n\x0cstart_bucket\x18\x02 \x01(\r\x12\x12\n\nend_bucket\x18\x03 \x01(\r\"*\n\rRangeResponse\x12\x19\n\x03kvs\x18\x01 \x03(\x0b\x32\x0c.kv.KeyValue2\xbc\x01\n\nReplicator\x12\x38\n\tReplicate\x12\x14.kv.ReplicateRequest\x1a\x15.kv.ReplicateResponse\x12>\n\rGetMerkleRoot\x12\x15.kv.MerkleRootRequest\x1a\x16.kv.MerkleRootResponse\x12\x34\n\rTransferRange\x12\x10.kv.RangeRequest\x1a\x11.kv.RangeResponseb\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x08kv.proto\x12\x02kv\"7\n\x08KeyValue\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t\x12\x0f\n\x07version\x18\x03 \x01(\x05\"?\n\x10ReplicateRequest\x12\x18\n\x02kv\x18\x01 \x01(\x0b\x32\x0c.kv.KeyValue\x12\x11\n\tfrom_node\x18\x02 \x01(\t\"0\n\x11ReplicateResponse\x12\n\n\x02ok\x18\x01 \x01(\x08\x12\x0f\n\x07message\x18\x02 \x01(\t\"F\n\x13StreamBucketRequest\x12\x11\n\tbucket_id\x18\x01 \x01(\x05\x12\r\n\x05start\x18\x02 \x01(\x05\x12\r\n\x05limit\x18\x03 \x01(\x05\"$\n\x08StreamKV\x12\x18\n\x02kv\x18\x01 \x01(\x0b\x32\x0c.kv.KeyValue2\x7f\n\nReplicator\x12\x38\n\tReplicate\x12\x14.kv.ReplicateRequest\x1a\x15.kv.ReplicateResponse\x12\x37\n\x0cStreamBucket\x12\x17.kv.StreamBucketRequest\x1a\x0c.kv.StreamKV0\x01\x62\x06proto3')
 
 
 
 _KEYVALUE = DESCRIPTOR.message_types_by_name['KeyValue']
 _REPLICATEREQUEST = DESCRIPTOR.message_types_by_name['ReplicateRequest']
 _REPLICATERESPONSE = DESCRIPTOR.message_types_by_name['ReplicateResponse']
-_MERKLEROOTREQUEST = DESCRIPTOR.message_types_by_name['MerkleRootRequest']
-_MERKLEROOTRESPONSE = DESCRIPTOR.message_types_by_name['MerkleRootResponse']
-_RANGEREQUEST = DESCRIPTOR.message_types_by_name['RangeRequest']
-_RANGERESPONSE = DESCRIPTOR.message_types_by_name['RangeResponse']
+_STREAMBUCKETREQUEST = DESCRIPTOR.message_types_by_name['StreamBucketRequest']
+_STREAMKV = DESCRIPTOR.message_types_by_name['StreamKV']
 KeyValue = _reflection.GeneratedProtocolMessageType('KeyValue', (_message.Message,), {
   'DESCRIPTOR' : _KEYVALUE,
   '__module__' : 'kv_pb2'
@@ -46,33 +44,19 @@ ReplicateResponse = _reflection.GeneratedProtocolMessageType('ReplicateResponse'
   })
 _sym_db.RegisterMessage(ReplicateResponse)
 
-MerkleRootRequest = _reflection.GeneratedProtocolMessageType('MerkleRootRequest', (_message.Message,), {
-  'DESCRIPTOR' : _MERKLEROOTREQUEST,
+StreamBucketRequest = _reflection.GeneratedProtocolMessageType('StreamBucketRequest', (_message.Message,), {
+  'DESCRIPTOR' : _STREAMBUCKETREQUEST,
   '__module__' : 'kv_pb2'
-  # @@protoc_insertion_point(class_scope:kv.MerkleRootRequest)
+  # @@protoc_insertion_point(class_scope:kv.StreamBucketRequest)
   })
-_sym_db.RegisterMessage(MerkleRootRequest)
+_sym_db.RegisterMessage(StreamBucketRequest)
 
-MerkleRootResponse = _reflection.GeneratedProtocolMessageType('MerkleRootResponse', (_message.Message,), {
-  'DESCRIPTOR' : _MERKLEROOTRESPONSE,
+StreamKV = _reflection.GeneratedProtocolMessageType('StreamKV', (_message.Message,), {
+  'DESCRIPTOR' : _STREAMKV,
   '__module__' : 'kv_pb2'
-  # @@protoc_insertion_point(class_scope:kv.MerkleRootResponse)
+  # @@protoc_insertion_point(class_scope:kv.StreamKV)
   })
-_sym_db.RegisterMessage(MerkleRootResponse)
-
-RangeRequest = _reflection.GeneratedProtocolMessageType('RangeRequest', (_message.Message,), {
-  'DESCRIPTOR' : _RANGEREQUEST,
-  '__module__' : 'kv_pb2'
-  # @@protoc_insertion_point(class_scope:kv.RangeRequest)
-  })
-_sym_db.RegisterMessage(RangeRequest)
-
-RangeResponse = _reflection.GeneratedProtocolMessageType('RangeResponse', (_message.Message,), {
-  'DESCRIPTOR' : _RANGERESPONSE,
-  '__module__' : 'kv_pb2'
-  # @@protoc_insertion_point(class_scope:kv.RangeResponse)
-  })
-_sym_db.RegisterMessage(RangeResponse)
+_sym_db.RegisterMessage(StreamKV)
 
 _REPLICATOR = DESCRIPTOR.services_by_name['Replicator']
 if _descriptor._USE_C_DESCRIPTORS == False:
@@ -84,14 +68,10 @@ if _descriptor._USE_C_DESCRIPTORS == False:
   _REPLICATEREQUEST._serialized_end=136
   _REPLICATERESPONSE._serialized_start=138
   _REPLICATERESPONSE._serialized_end=186
-  _MERKLEROOTREQUEST._serialized_start=188
-  _MERKLEROOTREQUEST._serialized_end=226
-  _MERKLEROOTRESPONSE._serialized_start=228
-  _MERKLEROOTRESPONSE._serialized_end=262
-  _RANGEREQUEST._serialized_start=264
-  _RANGEREQUEST._serialized_end=339
-  _RANGERESPONSE._serialized_start=341
-  _RANGERESPONSE._serialized_end=383
-  _REPLICATOR._serialized_start=386
-  _REPLICATOR._serialized_end=574
+  _STREAMBUCKETREQUEST._serialized_start=188
+  _STREAMBUCKETREQUEST._serialized_end=258
+  _STREAMKV._serialized_start=260
+  _STREAMKV._serialized_end=296
+  _REPLICATOR._serialized_start=298
+  _REPLICATOR._serialized_end=425
 # @@protoc_insertion_point(module_scope)

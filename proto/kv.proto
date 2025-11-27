@@ -1,11 +1,10 @@
 syntax = "proto3";
-
 package kv;
 
 message KeyValue {
   string key = 1;
   string value = 2;
-  uint64 version = 3;
+  int32 version = 3;
 }
 
 message ReplicateRequest {
@@ -18,26 +17,18 @@ message ReplicateResponse {
   string message = 2;
 }
 
-message MerkleRootRequest {
-  string partition = 1;
+message StreamBucketRequest {
+  int32 bucket_id = 1;
+  int32 start = 2;
+  int32 limit = 3;
 }
 
-message MerkleRootResponse {
-  string root = 1;
-}
-
-message RangeRequest {
-  string partition = 1;
-  uint32 start_bucket = 2;
-  uint32 end_bucket = 3;
-}
-
-message RangeResponse {
-  repeated KeyValue kvs = 1;
+message StreamKV {
+  KeyValue kv = 1;
 }
 
 service Replicator {
   rpc Replicate(ReplicateRequest) returns (ReplicateResponse);
-  rpc GetMerkleRoot(MerkleRootRequest) returns (MerkleRootResponse);
-  rpc TransferRange(RangeRequest) returns (RangeResponse);
+  // Server-side streaming for bucket transfer
+  rpc StreamBucket(StreamBucketRequest) returns (stream StreamKV);
 }

@@ -1,64 +1,37 @@
 # worker/storage.py
 import motor.motor_asyncio
-from typing import Optional, Dict, Any, List
-from pymongo import ReturnDocument
+from typing import Optional
 
 class MongoStorage:
-    def __init__(self, mongo_uri="mongodb://mongo:27017", db_name="kvstore", coll_name="kv"):
+    def __init__(self, mongo_uri="mongodb://mongo:27017", db_name="kvstore"):
         self.client = motor.motor_asyncio.AsyncIOMotorClient(mongo_uri)
         self.db = self.client[db_name]
-        self.coll = self.db[coll_name]
-        # ensure index on key
-        # Note: create_index is async but safe to call multiple times
-        try:
-            # schedule index creation, non-blocking
-            self.coll.create_index("key", unique=True)
-        except Exception:
-            pass
+        self.col = self.db.kv
 
-    async def put(self, key: str, value: str, version: int = 1) -> bool:
-        """
-        Write the key only if incoming version >= existing version.
-        Returns True if write applied, False if ignored due to older version.
-        """
-        # Try atomic conditional update: if existing.version <= version OR no existing doc
-        filter_doc = {
-            "key": key,
-            "$or": [
-                {"version": {"$lte": version}},
-                {"version": {"$exists": False}}
-            ]
-        }
-        update_doc = {"$set": {"value": value, "version": version}}
-        res = await self.coll.find_one_and_update(
-            filter_doc,
-            update_doc,
-            upsert=True,
-            return_document=ReturnDocument.AFTER
-        )
-        # If res is not None then operation succeeded (either update or upsert).
-        return res is not None
+    async def put(self, key: str, value: str, version: int = 1):
+        # Upsert with version check: only update if incoming version >= current
+        existing = await self.col.find_one({"key": key})
+        if existing:
+            # preserve only if version >= existing.version
+            if version >= existing.get("version", 0):
+                await self.col.update_one({"key": key}, {"$set": {"value": value, "version": version}})
+        else:
+            await self.col.insert_one({"key": key, "value": value, "version": version})
 
-    async def get(self, key: str) -> Optional[Dict[str, Any]]:
-        doc = await self.coll.find_one({"key": key})
-        if not doc:
-            return None
-        return {"value": doc.get("value"), "version": int(doc.get("version", 1))}
+    async def get(self, key: str) -> Optional[dict]:
+        doc = await self.col.find_one({"key": key}, {"_id": 0})
+        return doc
 
-    async def keys(self, pattern: str = "") -> List[str]:
-        # pattern ignored for now (simple MVP)
-        cursor = self.coll.find({}, {"_id": 0, "key": 1})
-        keys = []
-        async for doc in cursor:
-            keys.append(doc["key"])
-        return keys
-
-    async def get_many(self, keys: list) -> Dict[str, Optional[Dict[str, Any]]]:
-        docs = self.coll.find({"key": {"$in": keys}})
-        out = {}
-        async for d in docs:
-            out[d["key"]] = {"value": d.get("value"), "version": int(d.get("version", 1))}
-        # include missing keys as None
-        for k in keys:
-            out.setdefault(k, None)
+    async def list_keys_in_bucket(self, bucket_id: int, bucket_count: int = 16):
+        # Very simple bucketing: hash(key) % bucket_count == bucket_id
+        import hashlib
+        cursor = self.col.find({}, {"key":1, "value":1, "version":1, "_id":0})
+        out = []
+        async for d in cursor:
+            h = int(hashlib.sha256(d["key"].encode()).hexdigest(), 16) % bucket_count
+            if h == bucket_id:
+                out.append(d)
         return out
+
+    async def close(self):
+        self.client.close()
