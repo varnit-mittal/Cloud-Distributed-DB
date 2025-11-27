@@ -179,10 +179,19 @@ async def put_kv(key: str, body: PutReq):
                     kv_msg = kv_pb2.KeyValue(key=key, value=body.value, version=body.version)
                     req = kv_pb2.ReplicateRequest(kv=kv_msg, from_node=NODE_ID)
                     resp = await stub.Replicate(req, timeout=5)
+
+                    # If replica1 fails → PUT MUST FAIL (per assignment)
                     if not resp.ok:
-                        print("Replica1 failed:", resp.message)
+                        raise HTTPException(
+                            status_code=500,
+                            detail=f"PUT failed: synchronous replica {replica1['node_id']} rejected write"
+                        )
+
             except Exception as e:
-                print("gRPC replicate error:", e)
+                raise HTTPException(
+                    status_code=500,
+                    detail=f"PUT failed: could not write to replica1 ({replica1['node_id']}): {e}"
+                )
 
         if replica2 and replica2.get("node_id") != NODE_ID:
             rcli = app.state.redis
