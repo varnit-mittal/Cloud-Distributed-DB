@@ -1,0 +1,58 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: worker3-mongo
+  namespace: kv-system
+  labels:
+    app: worker3-mongo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: worker3-mongo
+  template:
+    metadata:
+      labels:
+        app: worker3-mongo
+    spec:
+      containers:
+      - name: mongo
+        image: mongo:6.0
+        ports:
+          - containerPort: 27017
+        volumeMounts:
+          - name: mongo-data
+            mountPath: /data/db
+        readinessProbe:
+          tcpSocket:
+            port: 27017
+          initialDelaySeconds: 5
+          periodSeconds: 5
+      volumes:
+      - name: mongo-data
+        persistentVolumeClaim:
+          claimName: worker3-mongo-pvc
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: worker3-mongo-pvc
+  namespace: kv-system
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: worker3-mongo
+  namespace: kv-system
+spec:
+  selector:
+    app: worker3-mongo
+  ports:
+    - port: 27017
+      targetPort: 27017

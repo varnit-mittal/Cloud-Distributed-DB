@@ -1,10 +1,13 @@
 NAMESPACE=kv-system
 K8S_DIR=./k8s
 
+start:
+	minikube start --driver=docker --network-plugin=cni --cni=flannel
+
 # Apply all manifests in k8s folder
 apply:
 	kubectl apply -f $(K8S_DIR)/namespace.yaml
-	kubectl apply -f $(K8S_DIR)
+	kubectl apply -R -f $(K8S_DIR)
 
 # Delete everything
 delete:

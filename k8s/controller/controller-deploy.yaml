@@ -1,0 +1,42 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: controller
+  namespace: kv-system
+  labels:
+    app: controller
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: controller
+  template:
+    metadata:
+      labels:
+        app: controller
+    spec:
+      containers:
+      - name: controller
+        image: varn03/kv-controller:latest
+        imagePullPolicy: IfNotPresent
+        env:
+          - name: ETCD_HOST
+            value: "etcd.kv-system.svc.cluster.local"
+          - name: ETCD_PORT
+            value: "2379"
+          - name: REDIS_URL
+            value: "redis://redis.kv-system.svc.cluster.local:6379/0"
+        ports:
+          - containerPort: 8000
+        readinessProbe:
+          httpGet:
+            path: /nodes
+            port: 8000
+          initialDelaySeconds: 5
+          periodSeconds: 8
+        livenessProbe:
+          httpGet:
+            path: /nodes
+            port: 8000
+          initialDelaySeconds: 15
+          periodSeconds: 20

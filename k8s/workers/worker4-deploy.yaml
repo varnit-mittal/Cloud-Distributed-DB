@@ -1,0 +1,36 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: worker4
+  namespace: kv-system
+  labels:
+    app: worker4
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: worker4
+  template:
+    metadata:
+      labels:
+        app: worker4
+    spec:
+      containers:
+      - name: worker
+        image: varn03/kv-worker:latest
+        env:
+          - name: NODE_ID
+            value: "worker4"
+          - name: CONTROLLER_ADDR
+            value: "http://controller.kv-system.svc.cluster.local:8000"
+          - name: REDIS_URL
+            value: "redis://redis.kv-system.svc.cluster.local:6379/0"
+          - name: MONGO_URL
+            value: "mongodb://worker4-mongo:27017"
+          - name: GRPC_PORT
+            value: "50051"
+          - name: HTTP_PORT
+            value: "8001"
+        ports:
+          - containerPort: 8001
+          - containerPort: 50051

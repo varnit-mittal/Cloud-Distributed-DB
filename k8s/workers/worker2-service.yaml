@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: worker2
+  namespace: kv-system
+spec:
+  selector:
+    app: worker2
+  ports:
+    - name: http
+      port: 8001
+      targetPort: 8001
+    - name: grpc
+      port: 50051
+      targetPort: 50051
