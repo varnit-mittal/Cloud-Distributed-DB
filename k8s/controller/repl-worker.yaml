@@ -1,0 +1,21 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: repl-worker
+  namespace: kv-system
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: repl-worker
+  template:
+    metadata:
+      labels:
+        app: repl-worker
+    spec:
+      containers:
+      - name: repl-worker
+        image: varn03/kv-repl-worker:latest
+        env:
+        - name: REDIS_URL
+          value: "redis://redis.kv-system.svc.cluster.local:6379/0"

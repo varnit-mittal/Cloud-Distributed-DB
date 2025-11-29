@@ -1,0 +1,12 @@
+FROM python:3.10-slim
+
+WORKDIR /app
+
+COPY repl_worker.py .
+COPY kv_pb2.py .
+COPY kv_pb2_grpc.py .
+COPY requirements.txt .
+
+RUN pip install -r requirements.txt
+
+CMD ["python", "repl_worker.py"]
