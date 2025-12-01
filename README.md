@@ -1,3 +1,4 @@
+
 # Distributed Key-Value Store
 
 A distributed, fault-tolerant key-value store implemented using a controller–worker architecture. The system supports key-space partitioning, three-way replication, quorum-based writes, REST APIs for client interaction, and automatic recovery from worker failures. It is fully containerized using Docker and deployable on Kubernetes.
@@ -23,6 +24,7 @@ A distributed, fault-tolerant key-value store implemented using a controller–w
 - [Project Structure](#project-structure)
 - [Technologies Used](#technologies-used)
 - [Future Improvements](#future-improvements)
+- [License](#license)
 
 ---
 
@@ -250,3 +252,8 @@ Cloud-Distributed-DB-main/
   - Comprehensive monitoring using Prometheus and Grafana
 
 -----
+
+## License
+
+This project is released under the MIT License.
+
