@@ -5,40 +5,24 @@ import asyncio
 import os
 from controller import Controller
 
-# Environment variables
 ETCD_HOST = os.environ.get("ETCD_HOST", "etcd.kv-system.svc.cluster.local")
 ETCD_PORT = int(os.environ.get("ETCD_PORT", "2379"))
 REDIS_URL = os.environ.get("REDIS_URL", "redis://redis.kv-system.svc.cluster.local:6379/0")
 
-# Create the controller object (persistent in-memory + etcd sync)
 ctrl = Controller(etcd_host=ETCD_HOST, etcd_port=ETCD_PORT, redis_url=REDIS_URL)
 
-
-# -------------------------
-# REQUEST MODELS
-# -------------------------
 class RegisterReq(BaseModel):
     node_id: str
     http_addr: str | None = None
     grpc_addr: str | None = None
-    addr: str | None = None   # backward compatibility
+    addr: str | None = None  
 
 
 class HeartbeatReq(BaseModel):
     node_id: str
 
-
-# -------------------------
-# BACKGROUND MONITOR
-# -------------------------
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """
-    Background monitor to detect failed workers and enforce:
-        - Remove dead worker
-        - Promote replicas
-        - Re-create third replica via redis re-replication job
-    """
 
     stop_event = asyncio.Event()
 
@@ -78,19 +62,10 @@ async def lifespan(app: FastAPI):
         except asyncio.CancelledError:
             pass
 
-
-# -------------------------
-# FASTAPI APP
-# -------------------------
 app = FastAPI(lifespan=lifespan, title="Distributed KV Controller")
 
-
-# -------------------------
-# ENDPOINTS
-# -------------------------
 @app.post("/register")
 async def register(req: RegisterReq):
-    """Workers register themselves here (http + grpc endpoints)."""
     http_addr = req.http_addr or req.addr
     try:
         ctrl.register_worker(
@@ -111,12 +86,6 @@ async def heartbeat(req: HeartbeatReq):
 
 @app.get("/mapping")
 async def mapping(key: str):
-    """
-    Returns:
-      primary   - worker handling the key
-      nodes     - up to 3 alive replicas
-      node_ids  - list of node ids
-    """
     try:
         return ctrl.mapping_for_key(key)
     except Exception as e:
@@ -125,7 +94,6 @@ async def mapping(key: str):
 
 @app.get("/nodes")
 async def nodes():
-    """Debug: list workers + alive set."""
     return {
         "workers": ctrl.workers,
         "alive": ctrl.get_alive_workers()
@@ -134,7 +102,6 @@ async def nodes():
 
 @app.post("/rebalance")
 async def rebalance(req: dict):
-    """Manually trigger re-replication/recovery for a dead node."""
     node = req.get("node")
     if not node:
         raise HTTPException(status_code=400, detail="Missing 'node' field.")

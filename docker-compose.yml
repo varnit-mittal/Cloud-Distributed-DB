@@ -1,9 +1,6 @@
 version: "3.9"
 
 services:
-  # ==========================
-  # ETCD (Controller metadata)
-  # ==========================
   etcd:
     image: bitnamilegacy/etcd:latest
     environment:
@@ -13,19 +10,11 @@ services:
     ports:
       - "2379:2379"
 
-  # ==========================
-  # REDIS (Message Queue)
-  # ==========================
   redis:
     image: redis:6-alpine
     command: ["redis-server", "--appendonly", "yes"]
     ports:
       - "6379:6379"
-
-  # ==========================
-  # MONGO DB FOR EACH WORKER
-  # ==========================
-
   worker1-mongo:
     image: mongo:6.0
     restart: always
@@ -58,9 +47,6 @@ services:
     volumes:
       - worker4-data:/data/db
 
-  # ==========================
-  # CONTROLLER
-  # ==========================
   controller:
     build:
       context: ./controller
@@ -72,9 +58,6 @@ services:
     ports:
       - "8000:8000"
 
-  # ==========================
-  # WORKER 1
-  # ==========================
   worker1:
     build:
       context: ./worker
@@ -93,9 +76,6 @@ services:
       - "8101:8001"
       - "51051:50051"
 
-  # ==========================
-  # WORKER 2
-  # ==========================
   worker2:
     build:
       context: ./worker
@@ -114,9 +94,6 @@ services:
       - "8102:8001"
       - "52052:50052"
 
-  # ==========================
-  # WORKER 3
-  # ==========================
   worker3:
     build:
       context: ./worker
@@ -135,9 +112,6 @@ services:
       - "8103:8001"
       - "53053:50053"
 
-  # ==========================
-  # WORKER 4
-  # ==========================
   worker4:
     build:
       context: ./worker

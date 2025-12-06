@@ -10,10 +10,6 @@ from grpc_server import serve_grpc
 import aioredis
 from urllib.parse import urlparse
 
-
-# -----------------------------------------
-# ENV / CONFIG
-# -----------------------------------------
 NODE_ID = os.environ.get("NODE_ID") or os.getenv("HOSTNAME", "worker")
 CONTROLLER_ADDR = os.environ.get("CONTROLLER_ADDR", "http://controller:8000")
 REDIS_URL = os.environ.get("REDIS_URL", "redis://redis:6379/0")
@@ -23,18 +19,10 @@ HTTP_PORT = int(os.environ.get("HTTP_PORT", "8001"))
 
 storage = MongoStorage(mongo_uri=MONGO_URL)
 
-
-# -----------------------------------------
-# API MODELS
-# -----------------------------------------
 class PutReq(BaseModel):
     value: str
     version: int = 1
 
-
-# -----------------------------------------
-# REPLICATION WORKER (ASYNC)
-# -----------------------------------------
 async def replication_worker(redis_client, node_id):
     STREAM_KEY = "replicate_stream"
     last_id = "0-0"
@@ -59,7 +47,6 @@ async def replication_worker(redis_client, node_id):
                     if not key or not value or not target_grpc:
                         continue
 
-                    # skip self-target
                     host = target_grpc.split(":")[0]
                     if host == node_id:
                         continue
@@ -84,29 +71,22 @@ async def replication_worker(redis_client, node_id):
             await asyncio.sleep(1)
 
 
-# -----------------------------------------
-# LIFESPAN (STARTUP)
-# -----------------------------------------
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     loop = asyncio.get_event_loop()
     tasks = []
 
-    # gRPC server
     grpc_task = loop.create_task(
         serve_grpc("0.0.0.0", GRPC_PORT, storage, NODE_ID)
     )
     tasks.append(grpc_task)
 
-    # Redis
     redis_client = aioredis.from_url(REDIS_URL, decode_responses=True)
     app.state.redis = redis_client
 
-    # Async replication worker
     repl_task = loop.create_task(replication_worker(redis_client, NODE_ID))
     tasks.append(repl_task)
 
-    # Register with controller (retry until success)
     async def register():
         async with httpx.AsyncClient() as client:
             while True:
@@ -125,7 +105,6 @@ async def lifespan(app: FastAPI):
 
     await register()
 
-    # Heartbeat
     async def heartbeat():
         async with httpx.AsyncClient() as client:
             while True:
@@ -139,7 +118,6 @@ async def lifespan(app: FastAPI):
     hb_task = loop.create_task(heartbeat())
     tasks.append(hb_task)
 
-    # READY
     try:
         yield
     finally:
@@ -156,10 +134,6 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
-
-# -----------------------------------------
-# HTTP GET/PUT API
-# -----------------------------------------
 @app.get("/kv/{key}")
 async def get_kv(key: str):
     doc = await storage.get(key)
@@ -170,10 +144,8 @@ async def get_kv(key: str):
 
 @app.put("/kv/{key}")
 async def put_kv(key: str, body: PutReq):
-    # Step 1: write locally (primary write)
     await storage.put(key, body.value, body.version)
 
-    # Step 2: ask controller for mapping
     async with httpx.AsyncClient() as client:
         try:
             resp = await client.get(f"{CONTROLLER_ADDR}/mapping", params={"key": key})
@@ -193,7 +165,6 @@ async def put_kv(key: str, body: PutReq):
             "grpc": n.get("grpc")
         })
 
-    # REPLICA1 – SYNCHRONOUS
     if len(replicas) > 1:
         r1 = replicas[1]
         if r1["node_id"] != NODE_ID:
@@ -210,7 +181,6 @@ async def put_kv(key: str, body: PutReq):
             except Exception as e:
                 raise HTTPException(500, f"Sync replication failed to {r1['node_id']}: {e}")
 
-    # REPLICA2 – ASYNC
     if len(replicas) > 2:
         r2 = replicas[2]
         if r2["node_id"] != NODE_ID:

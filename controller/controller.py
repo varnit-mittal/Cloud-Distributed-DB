@@ -1,4 +1,3 @@
-# controller/controller.py
 import hashlib
 import time
 import json
@@ -6,17 +5,11 @@ import uuid
 from fastapi import FastAPI, HTTPException
 from typing import Dict, Any, List
 
-# these are the libraries you're already using elsewhere
 from etcd_client import EtcdClient
 import redis
 
 
 class Controller:
-    """
-    Controller that keeps track of worker metadata (http/grpc addrs + status),
-    computes mapping for keys (hash mod N) and, on worker failure, promotes the
-    next active replica as primary and enqueues async jobs to create the 3rd replica.
-    """
 
     def __init__(
         self,
@@ -27,14 +20,13 @@ class Controller:
     ):
         self.etcd = EtcdClient(host=etcd_host, port=etcd_port)
         raw = self.etcd.load_workers() or {}
-        self.workers = self._normalize_loaded_workers(raw)  # node_id -> {"http":..,"grpc":..,"status":..}
+        self.workers = self.NormalizeWorkers(raw)  
         self.last_heartbeat: Dict[str, float] = {}
         self.bucket_count = bucket_count
 
-        # Redis stream queue for re-replication jobs
         self.redis = redis.Redis.from_url(redis_url, decode_responses=True)
 
-    def _normalize_loaded_workers(self, raw: Dict[str, Any]) -> Dict[str, Dict[str, Any]]:
+    def NormalizeWorkers(self, raw: Dict[str, Any]) -> Dict[str, Dict[str, Any]]:
         out = {}
         for nid, v in raw.items():
             if isinstance(v, dict):
@@ -49,7 +41,7 @@ class Controller:
 
     def refresh_workers(self):
         raw = self.etcd.load_workers() or {}
-        self.workers = self._normalize_loaded_workers(raw)
+        self.workers = self.NormalizeWorkers(raw)
 
     def register_worker(self, node_id: str, http_addr: str = None, grpc_addr: str = None):
         existing = self.workers.get(node_id, {})
@@ -57,7 +49,6 @@ class Controller:
         grpc = grpc_addr or existing.get("grpc")
         self.workers[node_id] = {"http": http, "grpc": grpc, "status": "alive"}
         try:
-            # persist to etcd as JSON (so other controllers see same format)
             self.etcd.save_workers(self.workers)
         except Exception as e:
             print("etcd save failed:", e)
@@ -68,7 +59,7 @@ class Controller:
         if node_id in self.workers:
             self.workers[node_id]["status"] = "alive"
 
-    def get_alive_workers(self, threshold: float = 10.0) -> Dict[str, Dict[str, Any]]:
+    def getAliveWorkers(self, threshold: float = 10.0) -> Dict[str, Dict[str, Any]]:
         now = time.time()
         alive = {}
         for nid, meta in self.workers.items():
@@ -84,38 +75,25 @@ class Controller:
         h = int(hashlib.sha256(key.encode()).hexdigest(), 16)
         return h % n
     
-    def _select_nodes_for_bucket(self, bucket_id: int, alive_nodes: List[str]) -> List[str]:
-        """
-        Rendezvous Hashing:
-        Determines the replica set for a bucket by hashing (Bucket + NodeID).
-        Returns list of node_ids sorted by highest hash score.
-        """
+    def NodeSelector(self, bucket_id: int, alive_nodes: List[str]) -> List[str]:
+    
         scores = []
         for node_id in alive_nodes:
-            # Combine bucket and node to get a unique hash for this pairing
             raw_key = f"{bucket_id}_{node_id}"
             score = hashlib.sha256(raw_key.encode()).hexdigest()
             scores.append((score, node_id))
         
-        # Sort by score descending (highest hash wins)
         scores.sort(key=lambda x: x[0], reverse=True)
         
-        # Return the node_ids of the top N (e.g., all of them, ordered)
         return [s[1] for s in scores]
 
     def mapping_for_key(self, key: str) -> Dict[str, Any]:
-        alive_nodes = list(self.get_alive_workers().keys())
+        alive_nodes = list(self.getAliveWorkers().keys())
         if not alive_nodes:
             raise HTTPException(status_code=503, detail="No alive workers")
 
-        # 1. Key -> Bucket
         bucket_id = int(hashlib.sha256(key.encode()).hexdigest(), 16) % self.bucket_count
-
-        # 2. Bucket -> Nodes (Using Rendezvous)
-        # Get all nodes ordered by priority for this bucket
-        ranked_nodes = self._select_nodes_for_bucket(bucket_id, alive_nodes)
-        
-        # 3. Pick top 3
+        ranked_nodes = self.NodeSelector(bucket_id, alive_nodes)
         selected_ids = ranked_nodes[:3]
         
         selected_meta = []
@@ -146,7 +124,7 @@ class Controller:
             try: self.etcd.save_workers(self.workers)
             except: pass
 
-        alive_nodes = list(self.get_alive_workers().keys())
+        alive_nodes = list(self.getAliveWorkers().keys())
         if not alive_nodes: return
 
         # "Previous" Universe: Alive nodes + the node that just died
@@ -155,11 +133,11 @@ class Controller:
         for bucket in range(self.bucket_count):
             # 1. Who WAS handling this bucket? (Top 3 from previous universe)
             # This logic mimics what mapping_for_key returned BEFORE the death.
-            prev_ranked = self._select_nodes_for_bucket(bucket, previous_universe)
+            prev_ranked = self.NodeSelector(bucket, previous_universe)
             old_replicas = prev_ranked[:3]
 
             # 2. Who SHOULD handle it now? (Top 3 from current/alive universe)
-            new_ranked = self._select_nodes_for_bucket(bucket, alive_nodes)
+            new_ranked = self.NodeSelector(bucket, alive_nodes)
             new_replicas = new_ranked[:3]
 
             # 3. CHECK: Was the dead node actually involved in this bucket?
