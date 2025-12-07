@@ -6,8 +6,6 @@ class EtcdClient:
         self.client = etcd3.client(host=host, port=port)
 
     def save_workers(self, workers_dict):
-        # persist as json-string map for compatibility
-        # workers_dict: {node_id: {"http":..., "grpc":...}}
         for nid, meta in workers_dict.items():
             self.client.put(f"workers/{nid}", json.dumps(meta))
 
