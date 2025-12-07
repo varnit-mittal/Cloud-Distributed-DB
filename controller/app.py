@@ -17,7 +17,6 @@ class RegisterReq(BaseModel):
     grpc_addr: str | None = None
     addr: str | None = None  
 
-
 class HeartbeatReq(BaseModel):
     node_id: str
 
@@ -30,7 +29,7 @@ async def lifespan(app: FastAPI):
         print("Controller Monitor Started")
         while not stop_event.is_set():
             try:
-                alive = ctrl.get_alive_workers()
+                alive = ctrl.getAliveWorkers()
                 all_workers = list(ctrl.workers.keys())
                 dead = set(all_workers) - set(alive.keys())
 
@@ -91,14 +90,12 @@ async def mapping(key: str):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-
 @app.get("/nodes")
 async def nodes():
     return {
         "workers": ctrl.workers,
-        "alive": ctrl.get_alive_workers()
+        "alive": ctrl.getAliveWorkers()
     }
-
 
 @app.post("/rebalance")
 async def rebalance(req: dict):
