@@ -3,17 +3,11 @@
 
 A distributed, fault-tolerant key-value store implemented using a controller–worker architecture. The system supports key-space partitioning, three-way replication, quorum-based writes, REST APIs for client interaction, and automatic recovery from worker failures. It is fully containerized using Docker and deployable on Kubernetes.
 
----
-
 ## Table of Contents
 - [Overview](#overview)
 - [System Architecture](#system-architecture)
 - [Key Features](#key-features)
-- [Components](#components)
-  - [Controller](#controller)
-  - [Worker Nodes](#worker-nodes)
-  - [Metadata and Storage Services](#metadata-and-storage-services)
-- [API Documentation](#api-documentation)
+- [API Endpoints](#api-endpoints)
   - [Controller REST API](#controller-rest-api)
   - [Worker REST API](#worker-rest-api)
 - [Replication Model](#replication-model)
@@ -25,8 +19,6 @@ A distributed, fault-tolerant key-value store implemented using a controller–w
 - [Technologies Used](#technologies-used)
 - [Future Improvements](#future-improvements)
 - [License](#license)
-
----
 
 ## Overview
 
@@ -40,7 +32,6 @@ The system consists of:
 
 The system ensures strong consistency through quorum-based writes and maintains availability through periodic worker heartbeats and automated re-replication.
 
----
 
 ## System Architecture
 
@@ -49,51 +40,22 @@ The architecture is divided into:
 2.  **Workers (Data Plane)** – store key-value data, handle REST operations, and manage replication.
 3.  **Supporting Services** – MongoDB for storage, Redis and etcd for coordination, and Kubernetes for orchestration.
 
-**Communication flow:**
+#### Communication flow:
 1.  Clients query the controller to locate the appropriate worker.
 2.  Clients perform GET/PUT on the designated worker.
-3.  Replication is performed synchronously (1 replica) and asynchronously (1 replica).
-
----
+3.  Replication is performed synchronously (1 extra replica) and asynchronously (1 replica).
 
 ## Key Features
 
 - Key-space partitioning across 4 workers
 - Three-way replication for all keys
 - Quorum-based write acknowledgment
-- Low-latency GET operations from primary worker
 - Automatic detection of worker failure
 - Automated re-replication to maintain replica count
-- Deployment support via Docker Compose and Kubernetes
+- Deployment support via Docker Compose for local testing and minikube to test for cloud deployment.
 - REST API (client) + gRPC (internal)
 
----
-
-## Components
-
-### Controller
-- Manages key-space partitioning
-- Stores metadata in etcd or Redis
-- Exposes REST endpoints for partition mapping and worker status
-- Initiates re-replication on worker failure
-- Receives periodic heartbeats from workers
-
-### Worker Nodes
-- Store data using local MongoDB instance
-- Handle GET/PUT REST operations
-- Communicate with other workers via gRPC for replication
-- Participate in synchronous + asynchronous replication
-- Maintain Merkle trees for validating replica consistency (optional)
-
-### Metadata and Storage Services
-- **MongoDB**: Stores key-value pairs for each worker
-- **Redis**: Auxiliary controller/operator storage
-- **etcd**: Cluster metadata and configuration state
-- **Kubernetes Operator**: Automates worker management and recovery
-
----
-
-## API Documentation
+## API Endpoints
 
 ### Controller REST API
 
@@ -101,7 +63,7 @@ The architecture is divided into:
 Returns the primary worker and replica nodes for a given key.
 
 ```http
-GET /partition/<key>
+GET /mapping?key=<key>
 ````
 
 **Response:**
@@ -118,7 +80,7 @@ GET /partition/<key>
 Returns a list of workers and their health status.
 
 ```http
-GET /workers
+GET /nodes
 ```
 
 #### Heartbeat (internal)
@@ -127,6 +89,14 @@ Used by workers to signal availability.
 
 ```http
 POST /heartbeat
+```
+
+#### Rebalancing (internal)
+
+Used by workers to rebalance in case of worker failure.
+
+```http
+POST /rebalance
 ```
 
 ### Worker REST API
@@ -144,19 +114,18 @@ GET /kv/<key>
 Accepts a JSON payload to store and triggers replication.
 
 ```http
-PUT /kv
+PUT /kv/<key>
 ```
 
 **Body:**
 
 ```json
 {
-  "key": "example",
-  "value": "123"
+  "value": "123",
+  "version": 1
 }
 ```
 
------
 
 ## Replication Model
 
@@ -169,16 +138,13 @@ PUT /kv
   - **GET Operation:**
       - Always served by the primary worker for low latency.
 
------
-
 ## Failure Handling
 
   - Workers send periodic heartbeats to the controller.
-  - **Detection:** If heartbeats are missing, the worker is marked as failed.
+  - **Detection:** If controller doesn't detect heartbeat for 10s, the worker is marked as failed.
   - **Recovery:** The controller reassigns key partitions and triggers automated re-replication to restore the 3-replica count.
   - This ensures fault tolerance and continuous availability even if a node goes down.
 
------
 
 ## Deployment
 
@@ -192,7 +158,7 @@ docker-compose up --build
 
 ### Kubernetes
 
-To deploy the system on a Kubernetes cluster, apply the manifests in order:
+To deploy the system on a Kubernetes cluster:
 
 ```bash
 kubectl apply -f k8s/namespace.yml
@@ -202,8 +168,6 @@ kubectl apply -f k8s/mongo/
 kubectl apply -f k8s/controller/
 kubectl apply -f k8s/workers/
 ```
-
------
 
 ## Project Structure
 
@@ -226,7 +190,6 @@ Cloud-Distributed-DB-main/
 └── README.md
 ```
 
------
 
 ## Technologies Used
 
@@ -238,20 +201,15 @@ Cloud-Distributed-DB-main/
   - **etcd**: Distributed cluster coordination
   - **Docker**: Containerization
   - **Kubernetes**: Orchestration and scaling
-  - **Merkle Trees**: Data integrity verification
 
------
 
 ## Future Improvements
 
   - Consistent hashing for dynamic scaling
   - Horizontal auto-scaling of worker pods
-  - Leader election for controller high availability
   - Multi-region replication
   - Load balancing for high-throughput workloads
   - Comprehensive monitoring using Prometheus and Grafana
-
------
 
 ## License
 
