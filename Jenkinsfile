@@ -20,6 +20,10 @@ pipeline {
         stage('Generate Protobuf Files') {
             steps {
                 sh '''
+
+                echo "Installing grpcio-tools..."
+                pip install grpcio grpcio-tools protobuf==3.20.3
+
                 echo "Making genProto.sh executable..."
                 chmod +x scripts/genProto.sh
 
