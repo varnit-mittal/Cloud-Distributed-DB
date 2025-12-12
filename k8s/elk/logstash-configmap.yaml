@@ -1,0 +1,32 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: logstash-config
+  namespace: kv-system
+data:
+  logstash.conf: |
+    input {
+      file {
+        path => "/var/log/containers/*.log"
+        start_position => "beginning"
+        sincedb_path => "/usr/share/logstash/plugins/inputs/file/.sincedb"
+        codec => json
+      }
+    }
+
+    filter {
+      mutate {
+        add_field => {
+          "kubernetes_pod" => "%{[kubernetes][pod_name]}"
+          "kubernetes_container" => "%{[kubernetes][container_name]}"
+        }
+      }
+    }
+
+    output {
+      elasticsearch {
+        hosts => ["http://elasticsearch.kv-system:9200"]
+        index => "kv-logs-%{+YYYY.MM.dd}"
+      }
+      stdout { codec => rubydebug }
+    }

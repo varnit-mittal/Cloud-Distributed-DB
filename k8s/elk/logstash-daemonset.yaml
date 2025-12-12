@@ -1,0 +1,31 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: logstash
+  namespace: kv-system
+spec:
+  selector:
+    matchLabels:
+      app: logstash
+  template:
+    metadata:
+      labels:
+        app: logstash
+    spec:
+      containers:
+      - name: logstash
+        image: docker.elastic.co/logstash/logstash:8.9.0
+        args: ["-f", "/usr/share/logstash/pipeline/logstash.conf"]
+        volumeMounts:
+        - name: config
+          mountPath: /usr/share/logstash/pipeline/logstash.conf
+          subPath: logstash.conf
+        - name: containerlogs
+          mountPath: /var/log/containers
+      volumes:
+      - name: config
+        configMap:
+          name: logstash-config
+      - name: containerlogs
+        hostPath:
+          path: /var/log/containers
