@@ -4,24 +4,22 @@
 
   tasks:
 
-    # 1. Check Minikube status using JSON (safe for Ansible)
-    - name: Check Minikube status
-      shell: minikube status --output=json | jq -r '.Host'
-      register: mk_status
-      ignore_errors: true
+    - name: Get Minikube status JSON
+      command: minikube status --output=json
+      register: mk_raw
 
-    # 2. Start Minikube only if not already running
-    - name: Start Minikube
-      shell: minikube start --driver=docker --network-plugin=cni --cni=flannel
-      when: mk_status.stdout is defined and mk_status.stdout != "Running"
+    - name: Parse Minikube JSON safely
+      set_fact:
+        mk_status: "{{ mk_raw.stdout | default('{}') | from_json }}"
 
-    # 3. Ensure kubectl is pointing to Minikube
     - name: Set kubectl context to minikube
       shell: kubectl config use-context minikube
+      when: mk_status.stdout is defined and mk_status.stdout != "Running"
       ignore_errors: true
 
     # 4. Apply Kubernetes manifests in k8s/ directory
     - name: Apply manifests in k8s folder
       command: kubectl apply -R -f k8s/
+      when: mk_status.stdout is defined and mk_status.stdout != "Running"
       args:
         chdir: "{{ playbook_dir }}/.."
