@@ -7,19 +7,27 @@
     - name: Get Minikube status JSON
       command: minikube status --output=json
       register: mk_raw
+      ignore_errors: true
 
     - name: Parse Minikube JSON safely
       set_fact:
         mk_status: "{{ mk_raw.stdout | default('{}') | from_json }}"
-
-    - name: Set kubectl context to minikube
-      shell: kubectl config use-context minikube
-      when: mk_status.stdout is defined and mk_status.stdout != "Running"
       ignore_errors: true
 
-    # 4. Apply Kubernetes manifests in k8s/ directory
-    - name: Apply manifests in k8s folder
+    - name: Show parsed Minikube status
+      debug:
+        msg: "{{ mk_status }}"
+
+    - name: Fail if Minikube is not running
+      fail:
+        msg: "Minikube is not fully running! (APIServer = {{ mk_status.APIServer | default('Unknown') }})"
+      when: mk_status.APIServer != "Running"
+
+    - name: Set kubectl context
+      command: kubectl config use-context minikube
+      ignore_errors: true
+
+    - name: Apply Kubernetes manifests
       command: kubectl apply -R -f k8s/
-      when: mk_status.stdout is defined and mk_status.stdout != "Running"
       args:
         chdir: "{{ playbook_dir }}/.."
