@@ -34,5 +34,6 @@
 
     - name: Apply Kubernetes manifests
       command: kubectl apply -R -f k8s/
+      ignore_errors: true
       args:
         chdir: "{{ playbook_dir }}/.."
