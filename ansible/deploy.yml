@@ -3,29 +3,25 @@
   become: false
 
   tasks:
-    # 1. Check if Minikube is already running
+
+    # 1. Check Minikube status using JSON (safe for Ansible)
     - name: Check Minikube status
-      shell: minikube status --format='{{.Host}}'
+      shell: minikube status --output=json | jq -r '.Host'
       register: mk_status
       ignore_errors: true
 
-    # 2. Start Minikube only if not running
+    # 2. Start Minikube only if not already running
     - name: Start Minikube
       shell: minikube start --driver=docker --network-plugin=cni --cni=flannel
-      when: mk_status.stdout != "Running"
+      when: mk_status.stdout is defined and mk_status.stdout != "Running"
 
-    # Optional: ensure kubectl context points to Minikube
+    # 3. Ensure kubectl is pointing to Minikube
     - name: Set kubectl context to minikube
       shell: kubectl config use-context minikube
-      register: kube_context
       ignore_errors: true
 
-    # 3. Apply all k8s manifests from the folder
-    - name: Apply Kubernetes manifests
+    # 4. Apply Kubernetes manifests in k8s/ directory
+    - name: Apply manifests in k8s folder
       command: kubectl apply -R -f k8s/
       args:
         chdir: "{{ playbook_dir }}/.."
-
-    # 4. (Optional) Force rollout restart to apply new images
-    - name: Restart deployments (optional)
-      shell: kubectl rollout restart deployment --all
