@@ -32,8 +32,10 @@
       command: kubectl config use-context minikube
       ignore_errors: true
 
-    - name: Apply Kubernetes manifests
+    - name: Making namespace
       command: kubectl apply -f k8s/namespace.yaml
+
+    - name: Apply Kubernetes manifests
       command: kubectl apply -R -f k8s/
       ignore_errors: true
       args:
