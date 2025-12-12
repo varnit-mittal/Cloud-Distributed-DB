@@ -1,6 +1,11 @@
 - name: Start Minikube and apply Kubernetes manifests
   hosts: local
+  gather_facts: no
   become: false
+
+  vars:
+    kube_config_path: "/home/varn03/.kube/config" 
+    kubectl_path: "/usr/local/bin/kubectl"
 
   tasks:
 
