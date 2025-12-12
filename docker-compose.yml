@@ -1,4 +1,4 @@
-version: "3.9"
+# version: "3.9"
 
 services:
   controller:
@@ -6,15 +6,76 @@ services:
       context: ./controller
       dockerfile: Dockerfile
     image: varn03/kv-controller:latest
+    logging:
+      driver: "syslog"
+      options:
+        syslog-address: "tcp://logstash:5000"
+        tag: "kv-controller"
 
   repl_worker:
     build:
       context: ./controller
       dockerfile: Dockerfile.repl-worker
     image: varn03/kv-repl-worker:latest
+    logging:
+      driver: "syslog"
+      options:
+        syslog-address: "tcp://logstash:5000"
+        tag: "kv-repl-worker"
 
   worker:
     build:
       context: ./worker
       dockerfile: Dockerfile
     image: varn03/kv-worker:latest
+    logging:
+      driver: "syslog"
+      options:
+        syslog-address: "tcp://logstash:5000"
+        tag: "kv-worker"
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.17.17
+    environment:
+      - discovery.type=single-node
+      - ES_JAVA_OPTS=-Xms512m -Xmx512m
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      - esdata:/usr/share/elasticsearch/data
+    ports:
+      - "9200:9200"
+    networks:
+      - elk
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:7.17.17
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+    ports:
+      - "5601:5601"
+    depends_on:
+      - elasticsearch
+    networks:
+      - elk
+
+  logstash:
+    image: docker.elastic.co/logstash/logstash:7.17.17
+    volumes:
+      - ./logstash/pipeline/:/usr/share/logstash/pipeline/
+    ports:
+      - "5000:5000"
+    depends_on:
+      - elasticsearch
+    networks:
+      - elk
+
+volumes:
+  esdata:
+    driver: local
+
+networks:
+  elk:
+    driver: bridge
