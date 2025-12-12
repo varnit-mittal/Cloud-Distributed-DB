@@ -37,7 +37,7 @@ pipeline {
             steps {
                 sh '''
                   echo "Building docker images..."
-                  docker-compose build
+                  docker compose build
                 '''
             }
         }
