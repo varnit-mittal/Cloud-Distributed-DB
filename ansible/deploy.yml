@@ -34,6 +34,8 @@
 
     - name: Making namespace
       command: kubectl apply -f k8s/namespace.yaml
+      args:
+        chdir: "{{ playbook_dir }}/.."
 
     - name: Apply Kubernetes manifests
       command: kubectl apply -R -f k8s/
