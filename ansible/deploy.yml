@@ -1,0 +1,31 @@
+- name: Start Minikube and apply Kubernetes manifests
+  hosts: local
+  become: false
+
+  tasks:
+    # 1. Check if Minikube is already running
+    - name: Check Minikube status
+      shell: minikube status --format='{{.Host}}'
+      register: mk_status
+      ignore_errors: true
+
+    # 2. Start Minikube only if not running
+    - name: Start Minikube
+      shell: minikube start --driver=docker --network-plugin=cni --cni=flannel
+      when: mk_status.stdout != "Running"
+
+    # Optional: ensure kubectl context points to Minikube
+    - name: Set kubectl context to minikube
+      shell: kubectl config use-context minikube
+      register: kube_context
+      ignore_errors: true
+
+    # 3. Apply all k8s manifests from the folder
+    - name: Apply Kubernetes manifests
+      command: kubectl apply -R -f k8s/
+      args:
+        chdir: "{{ playbook_dir }}/.."
+
+    # 4. (Optional) Force rollout restart to apply new images
+    - name: Restart deployments (optional)
+      shell: kubectl rollout restart deployment --all
