@@ -61,14 +61,14 @@ pipeline {
                     sh '''
                       echo "Tagging images with ${TAG}..."
                       
-                      docker tag kv-controller:latest ${REGISTRY}/kv-controller:${TAG}
-                      docker tag kv-repl-worker:latest ${REGISTRY}/kv-repl-worker:${TAG}
-                      docker tag kv-worker:latest ${REGISTRY}/kv-worker:${TAG}
+                      docker tag ${REGISTRY}/kv-controller:latest ${REGISTRY}/kv-controller:${TAG}
+                      docker tag ${REGISTRY}/kv-repl-worker:latest ${REGISTRY}/kv-repl-worker:${TAG}
+                      docker tag ${REGISTRY}/kv-worker:latest ${REGISTRY}/kv-worker:${TAG}
 
                       # Also tag 'latest' for convenience
-                      docker tag kv-controller:latest ${REGISTRY}/kv-controller:latest
-                      docker tag kv-repl-worker:latest ${REGISTRY}/kv-repl-worker:latest
-                      docker tag kv-worker:latest ${REGISTRY}/kv-worker:latest
+                      docker tag ${REGISTRY}/kv-controller:latest ${REGISTRY}/kv-controller:latest
+                      docker tag ${REGISTRY}/kv-repl-worker:latest ${REGISTRY}/kv-repl-worker:latest
+                      docker tag ${REGISTRY}/kv-worker:latest ${REGISTRY}/kv-worker:latest
                     '''
                 }
             }
