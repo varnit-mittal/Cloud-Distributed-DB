@@ -105,14 +105,18 @@ pipeline {
 
     post {
         success {
-            mail to: "${MAIL_RECIPIENTS}",
-                 subject: "✅ Jenkins Pipeline SUCCESS: SPE Scientific Calculator",
-                 body: "The pipeline executed successfully.\n\n✔ Repo: ${GIT_REPO_URL}\n✔ Image: ${DOCKER_HUB_REPO}\n✔ Deployed successfully on local system."
+            mail(
+                to: "${MAIL_RECIPIENTS}",
+                subject: "✅ Jenkins Pipeline SUCCESS: Distributed KV System",
+                body: "The Jenkins pipeline completed successfully.\nCommit: ${TAG}\nRegistry: ${REGISTRY}\n"
+            )
         }
         failure {
-            mail to: "${MAIL_RECIPIENTS}",
-                 subject: "❌ Jenkins Pipeline FAILURE: SPE Scientific Calculator",
-                 body: "The pipeline failed.\nPlease check the Jenkins logs for more details.\n\nRepo: ${GIT_REPO_URL}"
+            mail(
+                to: "${MAIL_RECIPIENTS}",
+                subject: "❌ Jenkins Pipeline FAILED: Distributed KV System",
+                body: "The Jenkins pipeline failed.\nPlease check the Jenkins logs for details.\n"
+            )
         }
     }
 }
