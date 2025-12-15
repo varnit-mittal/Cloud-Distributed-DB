@@ -13,6 +13,8 @@ spec:
       labels:
         app: kibana
     spec:
+      securityContext:
+        fsGroup: 1000   # ensures Kibana can read mounted certs
       containers:
       - name: kibana
         image: docker.elastic.co/kibana/kibana:8.9.0
@@ -23,22 +25,20 @@ spec:
         - name: ELASTICSEARCH_HOSTS
           value: "https://elasticsearch.kv-system:9200"
 
-        # Kibana username (Elastic superuser)
-        - name: ELASTICSEARCH_USERNAME
+        # Service account token for Kibana (correct for Elasticsearch 8.x)
+        - name: ELASTICSEARCH_SERVICEACCOUNTTOKEN
           valueFrom:
             secretKeyRef:
-              name: elasticsearch-credentials
-              key: username
+              name: kibana-service-token
+              key: token
 
-        - name: ELASTICSEARCH_PASSWORD
-          valueFrom:
-            secretKeyRef:
-              name: elasticsearch-credentials
-              key: password
-
-        # Path to the CA certificate inside the container
+        # CA certificate path
         - name: ELASTICSEARCH_SSL_CERTIFICATEAUTHORITIES
           value: "/usr/share/kibana/config/certs/http_ca.crt"
+
+        # Needed for CA-based HTTPS auth
+        - name: ELASTICSEARCH_SSL_VERIFICATIONMODE
+          value: "certificate"
 
         volumeMounts:
         - name: elastic-ca
@@ -49,6 +49,7 @@ spec:
       - name: elastic-ca
         secret:
           secretName: elasticsearch-ca
+
 ---
 apiVersion: v1
 kind: Service
@@ -56,9 +57,10 @@ metadata:
   namespace: kv-system
   name: kibana
 spec:
+  type: NodePort
   selector:
     app: kibana
   ports:
     - port: 5601
       targetPort: 5601
-      type: ClusterIP
+      nodePort: 30061   # you can choose any port between 30000–32767
