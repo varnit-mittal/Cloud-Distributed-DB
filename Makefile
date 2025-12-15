@@ -37,6 +37,3 @@ workers:
 
 clean-crash:
 	kubectl delete pod -n $(NAMESPACE) $$(kubectl get pods -n $(NAMESPACE) | grep CrashLoopBackOff | awk '{print $$1}')
-
-events:
-	kubectl get events -n $(NAMESPACE) --sort-by=.metadata.creationTimestamp
