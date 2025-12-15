@@ -23,7 +23,7 @@ spec:
         env:
         ### --- KIBANA SECURITY ENV VARS ---
         - name: ELASTICSEARCH_HOSTS
-          value: "https://elasticsearch.kv-system:9200"
+          value: "https://elasticsearch.kv-system.svc.cluster.local:9200"
 
         # Service account token for Kibana (correct for Elasticsearch 8.x)
         - name: ELASTICSEARCH_SERVICEACCOUNTTOKEN
@@ -34,7 +34,7 @@ spec:
 
         # CA certificate path
         - name: ELASTICSEARCH_SSL_CERTIFICATEAUTHORITIES
-          value: "/usr/share/kibana/config/certs/http_ca.crt"
+          value: "/usr/share/kibana/config/certs/elasticsearch-ca.pem"
 
         # Needed for CA-based HTTPS auth
         - name: ELASTICSEARCH_SSL_VERIFICATIONMODE
