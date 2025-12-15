@@ -5,6 +5,19 @@ import asyncio
 import os
 from controller import Controller
 
+import logging
+from pythonjsonlogger import jsonlogger
+
+# Configure JSON structured logging
+log_handler = logging.StreamHandler()
+formatter = jsonlogger.JsonFormatter('%(asctime)s %(name)s %(levelname)s %(message)s')
+log_handler.setFormatter(formatter)
+root_logger = logging.getLogger()
+root_logger.setLevel(logging.INFO)
+if not any(isinstance(h, logging.StreamHandler) for h in root_logger.handlers):
+    root_logger.addHandler(log_handler)
+logger = logging.getLogger('controller')
+
 ETCD_HOST = os.environ.get("ETCD_HOST", "etcd.kv-system.svc.cluster.local")
 ETCD_PORT = int(os.environ.get("ETCD_PORT", "2379"))
 REDIS_URL = os.environ.get("REDIS_URL", "redis://redis.kv-system.svc.cluster.local:6379/0")
@@ -26,7 +39,7 @@ async def lifespan(app: FastAPI):
     stop_event = asyncio.Event()
 
     async def monitor():
-        print("Controller Monitor Started")
+        logger.info("controller_monitor_started")
         while not stop_event.is_set():
             try:
                 alive = ctrl.getAliveWorkers()
@@ -34,19 +47,19 @@ async def lifespan(app: FastAPI):
                 dead = set(all_workers) - set(alive.keys())
 
                 if dead:
-                    print("Controller detected dead workers:", dead)
+                    logger.warning("detected_dead_workers", extra={"dead": list(dead)})
                     for d in dead:
                         try:
                             ctrl.handle_worker_failure(d)
                         except Exception as e:
-                            print("Error handling worker failure:", e)
+                            logger.exception("error_handling_worker_failure", extra={"worker": d})
 
                 await asyncio.sleep(5)
 
             except asyncio.CancelledError:
                 break
             except Exception as e:
-                print("Monitor error:", e)
+                logger.exception("monitor_error")
                 await asyncio.sleep(5)
 
     task = asyncio.create_task(monitor())

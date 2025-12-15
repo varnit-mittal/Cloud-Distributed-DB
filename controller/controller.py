@@ -7,6 +7,18 @@ from typing import Dict, Any, List
 
 from etcd_client import EtcdClient
 import redis
+import logging
+from pythonjsonlogger import jsonlogger
+
+# Configure JSON logger
+log_handler = logging.StreamHandler()
+formatter = jsonlogger.JsonFormatter('%(asctime)s %(name)s %(levelname)s %(message)s')
+log_handler.setFormatter(formatter)
+root_logger = logging.getLogger()
+root_logger.setLevel(logging.INFO)
+if not any(isinstance(h, logging.StreamHandler) for h in root_logger.handlers):
+    root_logger.addHandler(log_handler)
+logger = logging.getLogger('controller')
 
 
 class Controller:
@@ -51,7 +63,7 @@ class Controller:
         try:
             self.etcd.save_workers(self.workers)
         except Exception as e:
-            print("etcd save failed:", e)
+            logger.exception("etcd_save_failed")
         self.last_heartbeat[node_id] = time.time()
 
     def heartbeat(self, node_id: str):
@@ -116,7 +128,7 @@ class Controller:
     # Failure handling + re-replication
     # -----------------------------
     def handle_worker_failure(self, dead_node_id: str):
-        print(f"Handling failure for node {dead_node_id}")
+        logger.info("handling_failure", extra={"dead_node": dead_node_id})
         
         # Mark dead
         if dead_node_id in self.workers:
@@ -175,6 +187,6 @@ class Controller:
                 }
                 try:
                     self.redis.xadd("repl_jobs", job)
-                    print(f"Repair Bucket {bucket}: {source_node} -> {target_node}")
+                    logger.info("repair_bucket_enqueued", extra={"bucket": bucket, "source": source_node, "target": target_node})
                 except Exception as e:
-                    print("Redis enqueue failed:", e)
+                    logger.exception("redis_enqueue_failed", extra={"bucket": bucket, "target": target_node})

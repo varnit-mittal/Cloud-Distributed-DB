@@ -37,5 +37,7 @@ async def serve_grpc(host, port, storage, node_id):
     )
     server.add_insecure_port(f"{host}:{port}")
     await server.start()
-    print(f"gRPC server started {host}:{port}")
+    import logging
+    logger = logging.getLogger('worker.grpc')
+    logger.info(f"gRPC server started {host}:{port}")
     await server.wait_for_termination()

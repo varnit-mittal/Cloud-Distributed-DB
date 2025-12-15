@@ -2,6 +2,8 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 import asyncio, os
+import logging
+from pythonjsonlogger import jsonlogger
 import httpx
 import kv_pb2, kv_pb2_grpc
 import grpc
@@ -11,6 +13,18 @@ import aioredis
 from urllib.parse import urlparse
 
 NODE_ID = os.environ.get("NODE_ID") or os.getenv("HOSTNAME", "worker")
+
+# Configure JSON structured logging
+log_handler = logging.StreamHandler()
+formatter = jsonlogger.JsonFormatter('%(asctime)s %(name)s %(levelname)s %(message)s')
+log_handler.setFormatter(formatter)
+root_logger = logging.getLogger()
+root_logger.setLevel(logging.INFO)
+# avoid duplicate handlers in some environments
+if not any(isinstance(h, logging.StreamHandler) for h in root_logger.handlers):
+    root_logger.addHandler(log_handler)
+logger = logging.getLogger('worker')
+
 CONTROLLER_ADDR = os.environ.get("CONTROLLER_ADDR", "http://controller:8000")
 REDIS_URL = os.environ.get("REDIS_URL", "redis://redis:6379/0")
 MONGO_URL = os.environ.get("MONGO_URL", "mongodb://mongo:27017")
@@ -51,7 +65,7 @@ async def replication_worker(redis_client, node_id):
                     if host == node_id:
                         continue
 
-                    print(f"[{node_id}] Async replicating {key} → {target_grpc}")
+                    logger.info("async_replicating", extra={"node": node_id, "key": key, "target_grpc": target_grpc})
 
                     try:
                         async with grpc.aio.insecure_channel(target_grpc) as chan:
@@ -60,14 +74,14 @@ async def replication_worker(redis_client, node_id):
                             req = kv_pb2.ReplicateRequest(kv=msg, from_node=node_id)
                             resp = await stub.Replicate(req, timeout=5)
                             if resp.ok:
-                                print(f"[{node_id}] Async → COMPLETE")
+                                logger.info("async_replicate_complete", extra={"node": node_id, "key": key, "target_grpc": target_grpc})
                             else:
-                                print(f"[{node_id}] Async → FAILED: {resp.message}")
+                                logger.warning("async_replicate_failed", extra={"node": node_id, "key": key, "target_grpc": target_grpc, "message": resp.message})
                     except Exception as e:
-                        print(f"[{node_id}] Async replicate error:", e)
+                        logger.exception("async_replicate_error", extra={"node": node_id, "key": key, "target_grpc": target_grpc})
 
         except Exception as e:
-            print("Replication worker exception:", e)
+            logger.exception("replication_worker_exception")
             await asyncio.sleep(1)
 
 
@@ -97,10 +111,10 @@ async def lifespan(app: FastAPI):
                                       json={"node_id": NODE_ID,
                                             "http_addr": http_addr,
                                             "grpc_addr": grpc_addr})
-                    print(f"[{NODE_ID}] Registered with controller")
+                    logger.info("registered_with_controller", extra={"node": NODE_ID})
                     break
                 except Exception as e:
-                    print(f"[{NODE_ID}] Register failed → retrying:", e)
+                    logger.warning("register_failed_retrying", extra={"node": NODE_ID}, exc_info=True)
                     await asyncio.sleep(2)
 
     await register()
